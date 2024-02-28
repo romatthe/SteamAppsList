@@ -210,17 +210,25 @@ async function fullUpdate() {
     console.log('Working directory: ', process.cwd());
     let exclude_list = [];
 
-    if (fs.existsSync(local_dump_path)) {
-        process.chdir(local_dump_path);
-        run('git pull origin master');
-    } else {
-        run('git clone ' + git_dumps_url + ' ' + local_dump_path);
-        process.chdir(local_dump_path);
-    }
+    // Only pull on the latest dump if we don't want to make a full dump from scratch
+    if (process.env.FULL_DUMP !== 'TRUE') {
+        if (fs.existsSync(local_dump_path)) {
+            process.chdir(local_dump_path);
+            run('git pull origin master');
+        } else {
+            run('git clone ' + git_dumps_url + ' ' + local_dump_path);
+            process.chdir(local_dump_path);
+        }
 
-    if (!isOldList()) {
-        console.log('The list isn\'t old enough to be refreshed');
-        return;
+        if (!isOldList()) {
+            console.log('The list isn\'t old enough to be refreshed');
+            return;
+        }
+    // Else clean up any existing dump dir and chdir
+    } else {
+        fs.rmSync(local_dump_path, {force: true, recursive: true});
+        fs.mkdir(local_dump_path);
+        process.chdir(local_dump_path);
     }
 
     if (fs.existsSync(local_dump_name)) {
@@ -237,7 +245,6 @@ async function fullUpdate() {
         run('git commit -m "Auto commit"');
         run('git push origin master');
     }
-
 
     console.log('Finished.');
     process.chdir(startDir);
