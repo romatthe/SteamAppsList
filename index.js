@@ -24,7 +24,8 @@ const local_dump_name = './app_list.json';
 const local_dump_name_not_games = './not_games.json';
 const local_dump_name_games = './game_list.json';
 const local_dump_name_games_achievements = './game_achievements_list.json';
-const data_url = 'https://store.steampowered.com/api/appdetails/?filters=basic,achievements&appids=';
+// const data_url = 'https://store.steampowered.com/api/appdetails/?filters=basic,achievements&appids=';
+const data_url = 'https://store.steampowered.com/api/appdetails/?filters=achievements,release_date&appids=';
 const git_dumps_url = 'https://' + (git_credentials.login || process.env.GITUSERNAME) + ':' + (git_credentials.password || process.env.GITPASSWORD) + '@github.com/PaulCombal/SteamAppsListDumps.git';
 const all_apps_list_endpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
 const startDir = process.cwd();
@@ -99,7 +100,7 @@ function generateList(exclude_list = []) {
     return new Promise(async (resolve) => {
         const number_simultaneous_process = 1; // For now we query them 1 by 1, let's see of they fix their API
 
-        //const all_apps_list = {"applist":{"apps":[{"appid":216938,"name":"Pieterw test app76 ( 216938 )"},{"appid":660010,"name":"test2"},{"appid":660130,"name":"test3"},{"appid":397950,"name":"Clustertruck"},{"appid":397960,"name":"Mystery Expedition: Prisoners of Ice"},{"appid":397970,"name":"Abandoned: Chestnut Lodge Asylum"},{"appid":397980,"name":"Invasion"},{"appid":397990,"name":"Woof Blaster"},{"appid":398000,"name":"Little Big Adventure 2"},{"appid":398020,"name":"Colony Assault"},{"appid":398070,"name":"Protoshift"}]}};
+        // const all_apps_list = {"applist":{"apps":[{"appid":1160220,"name":"Paradise Killer"},{"appid":2358720,"name":"Black Myth: Wukong"}]}};
         const all_apps_list = await fetch(all_apps_list_endpoint).then(r => r.json());
         const known_app_ids = exclude_list.map(app => app.appid);
         const apps_to_process = all_apps_list.applist.apps.filter(app => !known_app_ids.includes(app.appid));
@@ -149,6 +150,12 @@ function generateList(exclude_list = []) {
             try {
                 const data = await response.json();
                 batch.forEach((app) => {
+                    // If the game isn't released yet, we just aren't interested
+                    if (data[app.appid].success && data[app.appid].data.release_date.coming_soon == true) { // Some apps don't have the key for some reason, eg Dota 2, 570
+                        console.warn('Skipping unreleased game with appid: ' + app.appid);
+                        return;
+                    }
+
                     let achievements = null;
                     if (data[app.appid].success && data[app.appid].data.achievements) { // Some apps don't have the key for some reason, eg Dota 2, 570
                         achievements = data[app.appid].data.achievements.total;
@@ -227,7 +234,7 @@ async function fullUpdate() {
     // Else clean up any existing dump dir and chdir
     } else {
         fs.rmSync(local_dump_path, {force: true, recursive: true});
-        fs.mkdir(local_dump_path);
+        fs.mkdirSync(local_dump_path);
         process.chdir(local_dump_path);
     }
 
