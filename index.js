@@ -128,7 +128,6 @@ function generateList(exclude_list = []) {
             console.log('Starting batch ' + index + ' of ' + batches_count + ' - ' + Math.round(100 * index / batches_count) + '%');
             console.log('Processing appids: ' + ids + ' - Estimated time needed: ' + millisToDiffStr((now - start_date) / (index / batches_count)));
             console.log('ETA: ' + millisToDiffStr(((now - start_date) / (index / batches_count) - (now - start_date))));
-            console.log('------------------');
 
             let response = await fetch(data_url + ids);
             while (!response.ok) {
@@ -152,7 +151,7 @@ function generateList(exclude_list = []) {
                 batch.forEach((app) => {
                     // If the game isn't released yet, we just aren't interested
                     if (data[app.appid].success && data[app.appid].data.release_date.coming_soon == true) { // Some apps don't have the key for some reason, eg Dota 2, 570
-                        console.warn('Skipping unreleased game with appid: ' + app.appid);
+                        console.log('Skipping unreleased game with appid: ' + app.appid);
                         return;
                     }
 
@@ -181,6 +180,7 @@ function generateList(exclude_list = []) {
                     });
                 });
             }
+            console.log('------------------');
 
             // let's not pressure the server as much
             await timeOutPromise(100);

@@ -16,7 +16,8 @@ This is used to push the commit for the dumps repo.
 Use the environment variable `WEBSERVER=true` to run a webserver with that, bound on port PORT or by default 3000.
 The webserver will start indexing everytime you visit it. Only one job at at time.
 
-Use `NO_PUSH=TRUE` if you don't want to commit & push the results
+Use `NO_PUSH=TRUE` if you don't want to commit & push the results.
+Use `FULL_DUMP=TRUE` to do a complete dump from scratch, without using the previous dumps from git as a baseline.
 
 ## LICENSE
 
