@@ -27,7 +27,9 @@ const local_dump_name_games_achievements = './game_achievements_list.json';
 // const data_url = 'https://store.steampowered.com/api/appdetails/?filters=basic,achievements&appids=';
 const data_url = 'https://store.steampowered.com/api/appdetails/?filters=achievements,release_date&appids=';
 const git_dumps_url = 'https://' + (git_credentials.login || process.env.GITUSERNAME) + ':' + (git_credentials.password || process.env.GITPASSWORD) + '@github.com/PaulCombal/SteamAppsListDumps.git';
-const all_apps_list_endpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
+// const all_apps_list_endpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
+const all_apps_list_endpoint = "https://api.steampowered.com/IStoreService/GetAppList/v1/";
+const api_key = "";
 const startDir = process.cwd();
 const is_dev = !process.env.PORT;
 let is_processing = false;
@@ -96,12 +98,52 @@ function saveList(list) {
     achievements_only.applist.apps = null; // free
 }
 
+async function generateAppList() {
+    let result = await fetch(all_apps_list_endpoint + "?key=" + api_key).then(r => r.json());
+    let apps = result.response.apps;
+
+    while (result.response.have_more_results == true) {
+        let url = all_apps_list_endpoint + "?key=" + api_key + "&last_appid=" + result.response.last_appid;
+        console.log("Fetching more from: " + url);
+        result = await fetch(url);
+
+        while (!result.ok) {
+            console.warn('Fetch applist failed, we have to take a break and retry. Code: ' + result.status);
+            console.warn('Url: ', url);
+            let timeout = 1000 * 60 * 2;   // Too many requests, any random error, wait 2 minutes
+            if (response.status === 502) { // Bad getaway, sometimes occur randomly
+                timeout = 1000;
+            }
+            await timeOutPromise(timeout);
+            result = await fetch(url);
+        }
+        
+        result = await result.json();
+        apps = apps.concat(result.response.apps);
+    }
+
+    apps = apps.map((a) => ({ appid: a.appid, name: a.name }));
+
+    console.log("Preparing the big Barf:\n");
+    console.log(apps);
+    console.log("-----------------------");
+    console.log("Total amount of apps fetched: " + apps.length);
+    console.log("-----------------------\n");
+
+    return apps;
+}
+
 function generateList(exclude_list = []) {
     return new Promise(async (resolve) => {
         const number_simultaneous_process = 1; // For now we query them 1 by 1, let's see of they fix their API
 
         // const all_apps_list = {"applist":{"apps":[{"appid":1160220,"name":"Paradise Killer"},{"appid":2358720,"name":"Black Myth: Wukong"}]}};
-        const all_apps_list = await fetch(all_apps_list_endpoint).then(r => r.json());
+        // const all_apps_list = await fetch(all_apps_list_endpoint).then(r => r.json());
+        const all_apps_list = {
+            applist: {
+                apps: await generateAppList()
+            }
+        };
         const known_app_ids = exclude_list.map(app => app.appid);
         const apps_to_process = all_apps_list.applist.apps.filter(app => !known_app_ids.includes(app.appid));
         const arranged_list = {
